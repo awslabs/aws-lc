@@ -52,6 +52,50 @@ OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 /* Returns |OCSP_BASICRESP| from |OCSP_RESPONSE| */
 OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 
+/* Returns |OCSP_SINGLERESP| in the index of |OCSP_BASICRESP| */
+OPENSSL_EXPORT OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
+
+/*
+ * Returns index of |OCSP_SINGLERESP| in |OCSP_BASICRESP| matching a given certificate ID,
+ * Returns -1 if not found
+ */
+OPENSSL_EXPORT int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last);
+
+/*
+ * Returns status of |OCSP_SINGLERESP|
+ * Note:
+ *  1. Reason value is allowed to be null
+ *  2. Time values passed into function are allowed to be NULL if certificate
+ *     fields are empty.
+ *  3. revtime and reason values only set if the certificate status is revoked.
+ */
+OPENSSL_EXPORT int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
+                            ASN1_GENERALIZEDTIME **revtime,
+                            ASN1_GENERALIZEDTIME **thisupd,
+                            ASN1_GENERALIZEDTIME **nextupd);
+
+/* Looks up a cert id and extract status information if found, Returns 1 on success. */
+OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, int *status,
+                          int *reason,
+                          ASN1_GENERALIZEDTIME **revtime,
+                          ASN1_GENERALIZEDTIME **thisupd,
+                          ASN1_GENERALIZEDTIME **nextupd);
+
+/* Returns a |OCSP_CERTID| converted from a certificate and its issuer */
+OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst, const X509 *subject,
+                                            const X509 *issuer);
+
+OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
+                                             const X509_NAME *issuerName,
+                                             const ASN1_BIT_STRING *issuerKey,
+                                             const ASN1_INTEGER *serialNumber);
+
+/* --- OCSP compare functions --- */
+/* Compares certificate id issuers, Returns 0 on equal. */
+OPENSSL_EXPORT int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
+
+/* Compares certificate id, Returns 0 on equal. */
+OPENSSL_EXPORT int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 #ifdef __cplusplus
 }
@@ -64,6 +108,7 @@ BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(OCSP_RESPONSE, OCSP_RESPONSE_free)
 BORINGSSL_MAKE_DELETER(OCSP_BASICRESP, OCSP_BASICRESP_free)
+BORINGSSL_MAKE_DELETER(OCSP_CERTID, OCSP_CERTID_free)
 
 BSSL_NAMESPACE_END
 
@@ -77,7 +122,13 @@ BSSL_NAMESPACE_END
 #define OCSP_RESPONSE_STATUS_SIGREQUIRED          5
 #define OCSP_RESPONSE_STATUS_UNAUTHORIZED         6
 
+#define V_OCSP_CERTSTATUS_GOOD                    0
+#define V_OCSP_CERTSTATUS_REVOKED                 1
+#define V_OCSP_CERTSTATUS_UNKNOWN                 2
+
+#define OCSP_R_DIGEST_ERR                         102
 #define OCSP_R_NOT_BASIC_RESPONSE                 104
 #define OCSP_R_NO_RESPONSE_DATA                   108
+#define OCSP_R_UNKNOWN_NID                        120
 
 #endif  // AWSLC_OCSP_H
